@@ -1,4 +1,4 @@
-cs153project1
+cs153 Project
 =============
 
 ### oldpintos
