@@ -135,6 +135,7 @@ void thread_foreach (thread_action_func *, void *);
    change its state to ready. Otherwise decrement its time 
    needed to sleep. */
 void thread_wake_up (struct thread *t, void *aux);
+void thread_check_priority(struct thread *t, void *aux);
 
 int thread_get_priority (void);
 void thread_set_priority (int);

@@ -54,6 +54,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 #define TIME_SLICE 4            /* # of timer ticks to give each thread. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -70,7 +71,6 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
-static int highest_priority = PRI_MIN;
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -204,15 +204,15 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
-  
-  if(priority > highest_priority)
-  {
-    highest_priority = priority;
-  } 
+
   intr_set_level (old_level);
 
   /* Add to run queue. */
   thread_unblock (t);
+  
+  old_level = intr_disable();
+  thread_check_priority(t, 0);
+  intr_set_level (old_level);
 
   return tid;
 }
@@ -345,7 +345,7 @@ thread_foreach (thread_action_func *func, void *aux)
 }
 
 void
-thread_wake_up (struct thread *t, void *aux)
+thread_wake_up (struct thread *t, void *aux UNUSED)
 {
   if(t->status == THREAD_BLOCKED)
   {
@@ -360,21 +360,25 @@ thread_wake_up (struct thread *t, void *aux)
   }
 }
 
-//void
-//thread_check_priority(struct thread *t, void *aux)
-//{
-//  if
-//}
+void
+thread_check_priority(struct thread *t, void *aux UNUSED)
+{
+  if(thread_current ()->priority < t->priority)
+  {
+    thread_yield();
+  }
+}
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
-  if(new_priority < highest_priority)
-  {
-    thread_yield();
-  }
+
+  enum intr_level old_level;
+  old_level = intr_disable ();
+  thread_foreach(thread_check_priority, 0);
+  intr_set_level (old_level);
 }
 
 /* Returns the current thread's priority. */
