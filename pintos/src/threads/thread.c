@@ -209,10 +209,13 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  
+
+  bool test = false;
+  bool *yield_now = &test;
   old_level = intr_disable();
-  thread_check_priority(t, 0);
+  thread_foreach(thread_check_priority, yield_now);
   intr_set_level (old_level);
+  if(yield_now) thread_yield();
 
   return tid;
 }
@@ -361,11 +364,11 @@ thread_wake_up (struct thread *t, void *aux UNUSED)
 }
 
 void
-thread_check_priority(struct thread *t, void *aux UNUSED)
+thread_check_priority(struct thread *t, void *aux)
 {
   if(thread_current ()->priority < t->priority)
   {
-    thread_yield();
+	aux = true; 
   }
 }
 
@@ -374,11 +377,14 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+  bool test = false;
+  bool* yield_now = &test; 
 
   enum intr_level old_level;
   old_level = intr_disable ();
-  thread_foreach(thread_check_priority, 0);
+  thread_foreach(thread_check_priority, yield_now);
   intr_set_level (old_level);
+  if(yield_now) thread_yield();
 }
 
 /* Returns the current thread's priority. */
