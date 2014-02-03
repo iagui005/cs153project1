@@ -210,10 +210,12 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  /* If new thread has higher priority then yield. Otherwise
+     keep running current thread. */
   bool test = false;
   bool *yield_now = &test;
   old_level = intr_disable();
-  thread_foreach(thread_check_priority, yield_now);
+  thread_check_priority(t, yield_now);
   intr_set_level (old_level);
   if(yield_now) thread_yield();
 
@@ -357,14 +359,14 @@ thread_wake_up (struct thread *t, void *aux UNUSED)
       t->sleep_ticks--;
       if(t->sleep_ticks == 0)
       {
-        thread_unblock(t);
+        thread_unblock (t);
       }
     }
   }
 }
 
 void
-thread_check_priority(struct thread *t, void *aux)
+thread_check_priority (struct thread *t, void *aux)
 {
   if(thread_current ()->priority < t->priority)
   {
@@ -384,7 +386,7 @@ thread_set_priority (int new_priority)
   old_level = intr_disable ();
   thread_foreach(thread_check_priority, yield_now);
   intr_set_level (old_level);
-  if(yield_now) thread_yield();
+  if (yield_now) thread_yield ();
 }
 
 /* Returns the current thread's priority. */
@@ -473,7 +475,7 @@ kernel_thread (thread_func *function, void *aux)
   function (aux);       /* Execute the thread function. */
   thread_exit ();       /* If function() returns, kill the thread. */
 }
-
+
 /* Returns the running thread. */
 struct thread *
 running_thread (void) 
@@ -535,9 +537,24 @@ static struct thread *
 next_thread_to_run (void) 
 {
   if (list_empty (&ready_list))
+  {
     return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
+  struct list_elem *next_elem = list_front (&ready_list);
+  struct list_elem *e;
+  struct thread *nt = list_entry (next_elem, struct thread, elem);
+  for (e = list_begin (&ready_list); e != list_end (&ready_list);
+       e = list_next (e))
+  {
+    struct thread *t = list_entry (e, struct thread, elem);
+    if( nt->priority < t->priority)
+    {
+      nt = t;
+      next_elem = e;
+    }
+  }
+  list_remove (next_elem);
+  return list_entry (next_elem, struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page

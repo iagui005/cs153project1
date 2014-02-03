@@ -33,6 +33,8 @@ static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
 static void real_time_delay (int64_t num, int32_t denom);
 
+static struct list hp_list;
+
 /* Sets up the timer to interrupt TIMER_FREQ times per second,
    and registers the corresponding interrupt. */
 void
@@ -95,12 +97,12 @@ timer_sleep (int64_t ticks)
   enum intr_level old_level;
   ASSERT (intr_get_level () == INTR_ON);
 
-  if(ticks > 0)
+  if (ticks > 0)
   {
-    thread_current()->sleep_ticks = ticks;
-    old_level = intr_disable();   
-    thread_block(); /* Puts the thread to the blocked state. */
-    intr_set_level(old_level);
+    thread_current ()->sleep_ticks = ticks;
+    old_level = intr_disable ();
+    thread_block ();
+    intr_set_level (old_level);
   }
 }
 
@@ -180,7 +182,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
-  thread_foreach (thread_wake_up,0);
+  thread_foreach (thread_wake_up, 0);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
